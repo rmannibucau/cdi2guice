@@ -1,0 +1,43 @@
+= CDI 2 Guice Bridge
+
+[source,xml]
+----
+<dependency>
+  <groupId>com.github.rmannibucau</groupId>
+  <artifactId>cdi2guice</artifactId>
+  <version>${cdi2guice.version}</version>
+</dependency>
+----
+
+Extend `Cdi2Guice` to configure the container overriding `configuredContainer`
+if needed and register this module in Guice to activate the bridge.
+
+IMPORTANT: call `close()` of the module once the application exist. In Play-guice it can be done through the `ApplicationLifecycle`.
+
+== Configuration
+
+If you don't want to extend the base class to configure the container, you can
+use a `META-INF/cdi2guice/container.properties` descriptor to resgiter your configuration.
+
+IMPORTANT: if you import multiple modules with these files the configuration will be merged
+when possible otherwise the last one wins. To help controlling that, the file are sorted using the `configuration.order` integer (natural order).
+Default is `0`.
+
+[opts="header"]
+|====
+|Name|Description|Default
+|beanClasses|List of classes to register (comma separated)|-
+|classPackages|List of classes marking packages to register (comma separated)|-
+|recursiveClassPackages|List of classes marking packages to register (comma separated), with their subpackages|-
+|disableDiscovery|Switch off the auto discovery|false
+|properties|A list of properties (set the value as properties) to register in the container|-
+|extensions|List of `Extension` classes to activate manually|-
+|decorators|List of `@Decorator` classes to activate manually|-
+|interceptors|List of `@Interceptor` classes to activate manually|-
+|alternatives|List of `@Alternative` classes to activate manually|-
+|alternativeStereotypes|List of `@Stereotype` classes to activate manually|-
+|====
+
+`configuration.registeredBeans` entry will enable you to control which CDI beans are registered
+into Guice context. If you set it to `true` (default), all beans will be registered, otherwise only the listed beans will be.
+Note that only the last matching entry is used (it is not merged to let you control this one).
