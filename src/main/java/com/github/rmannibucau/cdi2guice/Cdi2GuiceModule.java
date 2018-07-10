@@ -249,6 +249,7 @@ public class Cdi2GuiceModule extends AbstractModule implements AutoCloseable {
     private Class[] loadClasses(final ClassLoader loader, final String value) {
         return Stream.of(value.split(","))
                 .map(String::trim)
+                .filter(it -> !value.isEmpty())
                 .map(it -> {
                     try {
                         return loader.loadClass(it);
