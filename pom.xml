@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation=" http://maven.apache.org/POM/4.0.0           http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation=" http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.github.rmannibucau</groupId>
   <artifactId>cdi2guice</artifactId>
-  <version>1.0.1-SNAPSHOT</version>
+  <version>1.0.1</version>
   <name>CDI 2 Guice Bridge</name>
   <description>Starts a CDI SE container and add beans in Guice context.</description>
   <url>https://github.com/rmannibucau/cdi2guice</url>
@@ -155,7 +155,7 @@
     <connection>scm:git:https://github.com/rmannibucau/cdi2guice.git</connection>
     <developerConnection>scm:git:https://github.com/rmannibucau/cdi2guice.git</developerConnection>
     <url>https://github.com/rmannibucau/cdi2guice</url>
-    <tag>HEAD</tag>
+    <tag>cdi2guice-1.0.1</tag>
   </scm>
 
   <distributionManagement>
