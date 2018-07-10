@@ -24,6 +24,7 @@ import java.util.Properties;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
+import javax.enterprise.context.Conversation;
 import javax.enterprise.context.spi.Contextual;
 import javax.enterprise.context.spi.CreationalContext;
 import javax.enterprise.event.Event;
@@ -182,6 +183,9 @@ public class Cdi2GuiceModule extends AbstractModule implements AutoCloseable {
                                         if (pt.getRawType() == Event.class) {
                                             return false;
                                         }
+                                        if (pt.getRawType().getTypeName().startsWith("java.")) {
+                                            return false;
+                                        }
                                     }
                                     if (it == Principal.class) {
                                         return false;
@@ -209,6 +213,18 @@ public class Cdi2GuiceModule extends AbstractModule implements AutoCloseable {
                                     }
                                     if (it == Object.class) {
                                         return false;
+                                    }
+                                    if (it == Conversation.class) {
+                                        return false;
+                                    }
+                                    if (Class.class.isInstance(it)) {
+                                        final Class<?> clazz = Class.class.cast(it);
+                                        if (clazz.isPrimitive()) {
+                                            return false;
+                                        }
+                                        if (clazz.getName().startsWith("java.")) {
+                                            return false;
+                                        }
                                     }
                                     return !isPt;
                                 })
