@@ -15,6 +15,7 @@ import java.io.InputStream;
 import java.io.Reader;
 import java.io.StringReader;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.security.Principal;
@@ -160,8 +161,11 @@ public class Cdi2GuiceModule extends AbstractModule implements AutoCloseable {
                 .filter(Objects::nonNull)
                 .reduce(new Registrations("true", null), (a, b) -> b);
         final SeContainer initialize = initializer.initialize();
-        if ("true".equalsIgnoreCase(registrations.includes)) {
+        if ("true".equalsIgnoreCase(registrations.includes) || (registrations.includes != null && registrations.includes.contains("*"))) {
             final BeanManager beanManager = initialize.getBeanManager();
+            final Collection<String> prefix = "true".equals(registrations.includes) ? null : Stream.of(registrations.includes.split(","))
+                    .map(String::trim).filter(it -> !it.isEmpty()).map(v -> v.endsWith("*") ? v.substring(0, v.length() - 1) : v)
+                    .collect(toList());
             initialize.getBeanManager().getBeans(Object.class)
                     .forEach(bean -> register(
                             registrations.excludes,
@@ -170,11 +174,9 @@ public class Cdi2GuiceModule extends AbstractModule implements AutoCloseable {
                                     final boolean isPt = ParameterizedType.class.isInstance(it);
                                     if (isPt) {
                                         final ParameterizedType pt = ParameterizedType.class.cast(it);
-                                        if (!filterByClass(pt.getRawType())) {
-                                            return false;
-                                        }
+                                        return isIncluded(prefix, pt.getRawType());
                                     }
-                                    return filterByClass(it);
+                                    return isIncluded(prefix, it);
                                 })
                                 .collect(toList()),
                             bean.getQualifiers().stream()
@@ -187,11 +189,16 @@ public class Cdi2GuiceModule extends AbstractModule implements AutoCloseable {
                                 }
                                 return reference;
                             }));
-        } else {
+        } else if (registrations.includes != null) {
             Stream.of(loadClasses(loader, registrations.includes))
                     .forEach(clazz -> register(registrations.excludes, singletonList(clazz), emptyList(), type -> initialize.select(clazz).get()));
         }
         return initialize;
+    }
+
+    private boolean isIncluded(final Collection<String> prefix, final Type it) {
+        final String typeName = it.getTypeName();
+        return (prefix == null && filterByClass(it)) || (prefix != null && prefix.stream().anyMatch(p -> typeName.startsWith(p)));
     }
 
     private boolean filterByClass(final Type it) {
@@ -225,8 +232,12 @@ public class Cdi2GuiceModule extends AbstractModule implements AutoCloseable {
         if (it == Conversation.class) {
             return false;
         }
-        if (Class.class.isInstance(it) && Class.class.cast(it).isPrimitive()) {
+        if (it == Extension.class) {
             return false;
+        }
+        if (Class.class.isInstance(it)) {
+            final Class clazz = Class.class.cast(it);
+            return !Modifier.isAbstract(clazz.getModifiers());
         }
         return true;
     }
