@@ -170,65 +170,11 @@ public class Cdi2GuiceModule extends AbstractModule implements AutoCloseable {
                                     final boolean isPt = ParameterizedType.class.isInstance(it);
                                     if (isPt) {
                                         final ParameterizedType pt = ParameterizedType.class.cast(it);
-                                        if (pt.getRawType() == javax.inject.Provider.class) {
-                                            return false;
-                                        }
-                                        if (pt.getRawType() == Instance.class) {
-                                            return false;
-                                        }
-                                        if (pt.getRawType() == Bean.class) {
-                                            return false;
-                                        }
-                                        if (pt.getRawType() == Contextual.class) {
-                                            return false;
-                                        }
-                                        if (pt.getRawType() == Event.class) {
-                                            return false;
-                                        }
-                                        if (pt.getRawType().getTypeName().startsWith("java.")) {
+                                        if (!filterByClass(pt.getRawType())) {
                                             return false;
                                         }
                                     }
-                                    if (it == Principal.class) {
-                                        return false;
-                                    }
-                                    if (it == Instance.class) {
-                                        return false;
-                                    }
-                                    if (it == javax.inject.Provider.class) {
-                                        return false;
-                                    }
-                                    if (it == EventMetadata.class) {
-                                        return false;
-                                    }
-                                    if (it == InjectionPoint.class) {
-                                        return false;
-                                    }
-                                    if (it == Bean.class) {
-                                        return false;
-                                    }
-                                    if (it == Contextual.class) {
-                                        return false;
-                                    }
-                                    if (it == Event.class) {
-                                        return false;
-                                    }
-                                    if (it == Object.class) {
-                                        return false;
-                                    }
-                                    if (it == Conversation.class) {
-                                        return false;
-                                    }
-                                    if (Class.class.isInstance(it)) {
-                                        final Class<?> clazz = Class.class.cast(it);
-                                        if (clazz.isPrimitive()) {
-                                            return false;
-                                        }
-                                        if (clazz.getName().startsWith("java.")) {
-                                            return false;
-                                        }
-                                    }
-                                    return !isPt;
+                                    return filterByClass(it);
                                 })
                                 .collect(toList()),
                             bean.getQualifiers().stream()
@@ -246,6 +192,46 @@ public class Cdi2GuiceModule extends AbstractModule implements AutoCloseable {
                     .forEach(clazz -> register(registrations.excludes, singletonList(clazz), emptyList(), type -> initialize.select(clazz).get()));
         }
         return initialize;
+    }
+
+    private boolean filterByClass(final Type it) {
+        if (it == Principal.class) {
+            return false;
+        }
+        if (it == Instance.class) {
+            return false;
+        }
+        if (it == javax.inject.Provider.class) {
+            return false;
+        }
+        if (it == EventMetadata.class) {
+            return false;
+        }
+        if (it == InjectionPoint.class) {
+            return false;
+        }
+        if (it == Bean.class) {
+            return false;
+        }
+        if (it == Contextual.class) {
+            return false;
+        }
+        if (it == Event.class) {
+            return false;
+        }
+        if (it == Object.class) {
+            return false;
+        }
+        if (it == Conversation.class) {
+            return false;
+        }
+        if (it.getTypeName().startsWith("java.")) {
+            return false;
+        }
+        if (Class.class.isInstance(it) && Class.class.cast(it).isPrimitive()) {
+            return false;
+        }
+        return true;
     }
 
     private void register(final Collection<String> excludes, final Collection<Type> types,
