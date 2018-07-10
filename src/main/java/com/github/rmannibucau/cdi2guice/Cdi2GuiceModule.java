@@ -249,7 +249,7 @@ public class Cdi2GuiceModule extends AbstractModule implements AutoCloseable {
     private void register(final Collection<Type> types,
                           final Collection<Annotation> bindingAnnotations,
                           final Function<Type, Object> provider) {
-        types.forEach(type -> {
+        types.stream().filter(it -> !it.getTypeName().startsWith("java")).forEach(type -> {
             final TypeLiteral typeLiteral = TypeLiteral.get(type);
             if (bindingAnnotations.isEmpty()) {
                 bind(typeLiteral).toProvider((Provider<Object>) () -> provider.apply(type));
