@@ -8,6 +8,7 @@ import static java.util.Optional.ofNullable;
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
+import static java.util.stream.Collectors.toSet;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -88,7 +89,7 @@ public class Cdi2GuiceModule extends AbstractModule implements AutoCloseable {
         final SeContainerInitializer initializer = SeContainerInitializer.newInstance();
         final ClassLoader loader = Thread.currentThread().getContextClassLoader();
         initializer.setClassLoader(loader);
-        final String registrations = Stream.of("", "/")
+        final Registrations registrations = Stream.of("", "/")
                 .map(prefix -> prefix + "META-INF/cdi2guice/container.properties")
                 .map(resource -> {
                     try {
@@ -154,15 +155,16 @@ public class Cdi2GuiceModule extends AbstractModule implements AutoCloseable {
                         }
                         initializer.setProperties(properties.stringPropertyNames().stream().collect(toMap(identity(), properties::getProperty)));
                     });
-                    return config.getProperty("configuration.registeredBeans");
+                    return new Registrations(config.getProperty("configuration.registeredBeans"), config.getProperty("configuration.excludedTypes"));
                 })
                 .filter(Objects::nonNull)
-                .reduce("true", (a, b) -> b);
+                .reduce(new Registrations("true", null), (a, b) -> b);
         final SeContainer initialize = initializer.initialize();
-        if ("true".equalsIgnoreCase(registrations)) {
+        if ("true".equalsIgnoreCase(registrations.includes)) {
             final BeanManager beanManager = initialize.getBeanManager();
             initialize.getBeanManager().getBeans(Object.class)
                     .forEach(bean -> register(
+                            registrations.excludes,
                             bean.getTypes().stream()
                                 .filter(it -> {
                                     final boolean isPt = ParameterizedType.class.isInstance(it);
@@ -240,32 +242,34 @@ public class Cdi2GuiceModule extends AbstractModule implements AutoCloseable {
                                 return reference;
                             }));
         } else {
-            Stream.of(loadClasses(loader, registrations))
-                    .forEach(clazz -> register(singletonList(clazz), emptyList(), type -> initialize.select(clazz).get()));
+            Stream.of(loadClasses(loader, registrations.includes))
+                    .forEach(clazz -> register(registrations.excludes, singletonList(clazz), emptyList(), type -> initialize.select(clazz).get()));
         }
         return initialize;
     }
 
-    private void register(final Collection<Type> types,
+    private void register(final Collection<String> excludes, final Collection<Type> types,
                           final Collection<Annotation> bindingAnnotations,
                           final Function<Type, Object> provider) {
-        types.stream().filter(it -> !it.getTypeName().startsWith("java")).forEach(type -> {
-            final TypeLiteral typeLiteral = TypeLiteral.get(type);
-            if (bindingAnnotations.isEmpty()) {
-                bind(typeLiteral).toProvider((Provider<Object>) () -> provider.apply(type));
-            } else {
-                bindingAnnotations.forEach(binding ->
-                    bind(typeLiteral)
-                        .annotatedWith(binding)
-                        .toProvider((Provider<Object>) () -> provider.apply(type)));
-            }
-        });
+        types.stream().filter(it -> !it.getTypeName().startsWith("java"))
+             .filter(it -> excludes == null || excludes.stream().noneMatch(v -> it.getTypeName().startsWith(v)))
+             .forEach(type -> {
+                final TypeLiteral typeLiteral = TypeLiteral.get(type);
+                if (bindingAnnotations.isEmpty()) {
+                    bind(typeLiteral).toProvider((Provider<Object>) () -> provider.apply(type));
+                } else {
+                    bindingAnnotations.forEach(binding ->
+                        bind(typeLiteral)
+                            .annotatedWith(binding)
+                            .toProvider((Provider<Object>) () -> provider.apply(type)));
+                }
+            });
     }
 
     private Class[] loadClasses(final ClassLoader loader, final String value) {
         return Stream.of(value.split(","))
                 .map(String::trim)
-                .filter(it -> !value.isEmpty())
+                .filter(it -> !it.isEmpty())
                 .map(it -> {
                     try {
                         return loader.loadClass(it);
@@ -278,5 +282,17 @@ public class Cdi2GuiceModule extends AbstractModule implements AutoCloseable {
 
     protected void doClose(final Runnable runnable) {
         runnable.run();
+    }
+
+    private static class Registrations {
+        private final String includes;
+        private final Collection<String> excludes;
+
+        private Registrations(final String includes, final String excludes) {
+            this.includes = includes;
+            this.excludes = excludes == null ? null : Stream.of(excludes.split(",")).map(String::trim)
+                                                            .filter(it -> !it.isEmpty())
+                                                            .collect(toSet());
+        }
     }
 }
