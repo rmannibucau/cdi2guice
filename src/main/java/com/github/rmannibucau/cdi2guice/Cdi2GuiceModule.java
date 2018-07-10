@@ -225,9 +225,6 @@ public class Cdi2GuiceModule extends AbstractModule implements AutoCloseable {
         if (it == Conversation.class) {
             return false;
         }
-        if (it.getTypeName().startsWith("java.")) {
-            return false;
-        }
         if (Class.class.isInstance(it) && Class.class.cast(it).isPrimitive()) {
             return false;
         }
@@ -237,7 +234,7 @@ public class Cdi2GuiceModule extends AbstractModule implements AutoCloseable {
     private void register(final Collection<String> excludes, final Collection<Type> types,
                           final Collection<Annotation> bindingAnnotations,
                           final Function<Type, Object> provider) {
-        types.stream().filter(it -> !it.getTypeName().startsWith("java"))
+        types.stream().filter(it -> !bindingAnnotations.isEmpty() || !it.getTypeName().startsWith("java."))
              .filter(it -> excludes == null || excludes.stream().noneMatch(v -> it.getTypeName().startsWith(v)))
              .forEach(type -> {
                 final TypeLiteral typeLiteral = TypeLiteral.get(type);
