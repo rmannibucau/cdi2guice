@@ -27,14 +27,18 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 import javax.enterprise.context.Conversation;
+import javax.enterprise.context.Dependent;
 import javax.enterprise.context.spi.Contextual;
 import javax.enterprise.context.spi.CreationalContext;
 import javax.enterprise.event.Event;
+import javax.enterprise.event.Observes;
 import javax.enterprise.inject.Any;
 import javax.enterprise.inject.Default;
 import javax.enterprise.inject.Instance;
+import javax.enterprise.inject.Vetoed;
 import javax.enterprise.inject.se.SeContainer;
 import javax.enterprise.inject.se.SeContainerInitializer;
+import javax.enterprise.inject.spi.AfterBeanDiscovery;
 import javax.enterprise.inject.spi.AnnotatedType;
 import javax.enterprise.inject.spi.Bean;
 import javax.enterprise.inject.spi.BeanManager;
@@ -44,17 +48,30 @@ import javax.enterprise.inject.spi.InjectionPoint;
 import javax.enterprise.inject.spi.InjectionTarget;
 
 import com.google.inject.AbstractModule;
+import com.google.inject.Inject;
+import com.google.inject.Injector;
 import com.google.inject.Provider;
 import com.google.inject.TypeLiteral;
+
+import lombok.Getter;
 
 public class Cdi2GuiceModule extends AbstractModule implements AutoCloseable {
     private SeContainer container;
     private final Collection<Runnable> onClose = new ArrayList<>();
+    private final GuiceContextAccessor accessor = new GuiceContextAccessor();
 
     @Override
     protected void configure() {
+        bind(GuiceContextAccessor.class).toInstance(accessor);
         container = configuredContainer();
         onClose.add(container::close);
+    }
+
+    @Getter
+    @Vetoed
+    public static class GuiceContextAccessor {
+        @Inject
+        private Injector injector;
     }
 
     /**
@@ -90,6 +107,16 @@ public class Cdi2GuiceModule extends AbstractModule implements AutoCloseable {
         final SeContainerInitializer initializer = SeContainerInitializer.newInstance();
         final ClassLoader loader = Thread.currentThread().getContextClassLoader();
         initializer.setClassLoader(loader);
+        initializer.addExtensions(new Extension() {
+            void addGuiceBeans(@Observes final AfterBeanDiscovery afterBeanDiscovery) {
+                afterBeanDiscovery.addBean()
+                  .id(Cdi2GuiceModule.this.getClass().getName() + "#Injector")
+                  .scope(Dependent.class) // don't proxy
+                  .types(Injector.class, Object.class)
+                  .qualifiers(Default.Literal.INSTANCE, Any.Literal.INSTANCE)
+                  .createWith(c -> accessor.getInjector());
+            }
+        });
         final Registrations registrations = Stream.of("", "/")
                 .map(prefix -> prefix + "META-INF/cdi2guice/container.properties")
                 .map(resource -> {
