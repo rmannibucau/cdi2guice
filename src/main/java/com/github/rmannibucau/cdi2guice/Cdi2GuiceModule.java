@@ -71,7 +71,7 @@ public class Cdi2GuiceModule extends AbstractModule implements AutoCloseable {
     @Vetoed
     public static class GuiceContextAccessor {
         @Inject
-        private Injector injector;
+        private Provider<Injector> injector;
     }
 
     /**
@@ -114,7 +114,7 @@ public class Cdi2GuiceModule extends AbstractModule implements AutoCloseable {
                   .scope(Dependent.class) // don't proxy
                   .types(Injector.class, Object.class)
                   .qualifiers(Default.Literal.INSTANCE, Any.Literal.INSTANCE)
-                  .createWith(c -> accessor.getInjector());
+                  .createWith(c -> accessor.getInjector().get());
             }
         });
         final Registrations registrations = Stream.of("", "/")
